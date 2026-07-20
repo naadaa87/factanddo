@@ -1,0 +1,126 @@
+{
+  "_설명": "탐색 페이지의 데이터 원본입니다. 이 파일을 수정하고 커밋하면 사이트에 반영됩니다. 항목 추가 시 아래 스키마를 그대로 복사해 쓰세요. 기존 173개 조사 데이터(services_raw.json / 엑셀)가 있다면 Claude에게 '이 파일 형식으로 변환해줘'라고 요청하면 됩니다.",
+  "_스키마": {
+    "id": "고유번호(영문+숫자)",
+    "kind": "platform(생태계 서비스) 또는 course(개별 과정)",
+    "name": "이름",
+    "layer": "교육 판매 | 비교·리뷰 | 커뮤니티 | 실행 모임 | 수익 실행",
+    "category": ["AI·자동화", "콘텐츠 수익화", "이커머스", "공통"],
+    "url": "공식 URL(확인된 것만)",
+    "desc": "확인 가능한 사실 위주 한 줄 설명",
+    "checked": "확인일 YYYY-MM-DD",
+    "review_state": "리뷰 표본 없음 | 초기 표본 | 수집 중"
+  },
+  "items": [
+    {
+      "id": "p001",
+      "kind": "platform",
+      "name": "클래스101",
+      "layer": "교육 판매",
+      "category": ["공통", "콘텐츠 수익화"],
+      "url": "https://class101.net",
+      "desc": "구독형 온라인 클래스 플랫폼. 취미·부업·수익화 등 다수 카테고리의 과정을 판매한다.",
+      "checked": "2026-07-19",
+      "review_state": "리뷰 표본 없음"
+    },
+    {
+      "id": "p002",
+      "kind": "platform",
+      "name": "인프런",
+      "layer": "교육 판매",
+      "category": ["AI·자동화", "공통"],
+      "url": "https://www.inflearn.com",
+      "desc": "IT·개발·데이터 중심 온라인 강의 마켓. 개별 구매형 과정이 많다.",
+      "checked": "2026-07-19",
+      "review_state": "리뷰 표본 없음"
+    },
+    {
+      "id": "p003",
+      "kind": "platform",
+      "name": "패스트캠퍼스",
+      "layer": "교육 판매",
+      "category": ["AI·자동화", "공통"],
+      "url": "https://fastcampus.co.kr",
+      "desc": "실무 교육 중심의 유료 온라인 교육 기업. 커리어·수익화 관련 패키지 과정을 운영한다.",
+      "checked": "2026-07-19",
+      "review_state": "리뷰 표본 없음"
+    },
+    {
+      "id": "p004",
+      "kind": "platform",
+      "name": "부트텐트",
+      "layer": "비교·리뷰",
+      "category": ["AI·자동화"],
+      "url": "https://boottent.com",
+      "desc": "개발 부트캠프 모집 정보를 모아 비교할 수 있는 정보 서비스.",
+      "checked": "2026-07-19",
+      "review_state": "리뷰 표본 없음"
+    },
+    {
+      "id": "p005",
+      "kind": "platform",
+      "name": "별별선생",
+      "layer": "비교·리뷰",
+      "category": ["공통"],
+      "url": "https://www.starteacher.co.kr",
+      "desc": "강사·학원 후기를 다루는 리뷰 서비스.",
+      "checked": "2026-07-19",
+      "review_state": "리뷰 표본 없음"
+    },
+    {
+      "id": "p006",
+      "kind": "platform",
+      "name": "고용24 직업훈련",
+      "layer": "비교·리뷰",
+      "category": ["공통"],
+      "url": "https://www.work24.go.kr",
+      "desc": "정부 지원 직업훈련 과정의 만족도·취업률 등 공공 성과정보를 제공한다.",
+      "checked": "2026-07-19",
+      "review_state": "리뷰 표본 없음"
+    },
+    {
+      "id": "p007",
+      "kind": "platform",
+      "name": "HOLIX",
+      "layer": "실행 모임",
+      "category": ["공통"],
+      "url": "https://holix.com",
+      "desc": "관심사 기반 클럽·스터디 모임 플랫폼.",
+      "checked": "2026-07-19",
+      "review_state": "리뷰 표본 없음"
+    },
+    {
+      "id": "p008",
+      "kind": "platform",
+      "name": "SYDE",
+      "layer": "실행 모임",
+      "category": ["공통"],
+      "url": "https://syde.kr",
+      "desc": "사이드 프로젝트·팀빌딩 커뮤니티.",
+      "checked": "2026-07-19",
+      "review_state": "리뷰 표본 없음"
+    },
+    {
+      "id": "p009",
+      "kind": "platform",
+      "name": "크몽",
+      "layer": "수익 실행",
+      "category": ["콘텐츠 수익화", "공통"],
+      "url": "https://kmong.com",
+      "desc": "프리랜서 재능·서비스 거래 마켓. 부업 실행의 첫 거래가 자주 발생하는 채널.",
+      "checked": "2026-07-19",
+      "review_state": "리뷰 표본 없음"
+    },
+    {
+      "id": "p010",
+      "kind": "platform",
+      "name": "숨고",
+      "layer": "수익 실행",
+      "category": ["공통"],
+      "url": "https://soomgo.com",
+      "desc": "생활·전문 서비스 견적 매칭 플랫폼.",
+      "checked": "2026-07-19",
+      "review_state": "리뷰 표본 없음"
+    }
+  ]
+}
