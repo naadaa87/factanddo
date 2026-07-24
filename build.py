@@ -24,7 +24,7 @@ CONFIG = {
     "SLOGAN": "검증에서 실행까지.",
     "TAGLINE": "검증하고, 함께 실행하고, 결과로 증명하다.",
     # 도메인 연결 후 "https://factanddo.com" 으로 바꾸고 커밋하세요.
-    "BASE_URL": "https://factanddo.pages.dev",
+    "BASE_URL": "https://factanddo.com",
     # Tally/구글폼 등 사전등록 폼 주소. 만들기 전에는 "" 로 두면 '준비 중' 안내가 표시됩니다.
     "WAITLIST_FORM_URL": "",
     # 1기 실행그룹 카카오 오픈채팅 링크. 없으면 "" 유지.
