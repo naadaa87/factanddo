@@ -12,7 +12,7 @@ FACT&DO (팩트앤두) 정적 사이트 생성기
 2) data/services.json : 탐색 페이지 데이터
 3) content_ko.py      : 정책 초안·검증 기준 원문
 """
-import json, os, shutil, html, types
+import json, os, shutil, html, types, hashlib
 import content_ko as C
 import pages_fact as F
 
@@ -54,6 +54,21 @@ for _k in ("REPORT_FORM_URL", "NOTICE", "GITHUB_REPO", "GITHUB_BRANCH"):
 
 DIST = "dist"
 E = html.escape
+
+def ver(name):
+    """파일 내용이 바뀌면 주소 뒤 ?v= 값이 바뀌어, 방문자 브라우저가 옛 파일을 계속 쓰지 않게 합니다."""
+    try:
+        with open(os.path.join("assets", name), "rb") as f:
+            return hashlib.md5(f.read()).hexdigest()[:8]
+    except FileNotFoundError:
+        return CONFIG["DATA_DATE"].replace("-", "")
+
+def data_ver():
+    h = hashlib.md5()
+    for n in sorted(os.listdir("data")):
+        with open(os.path.join("data", n), "rb") as f:
+            h.update(f.read())
+    return h.hexdigest()[:8]
 
 # ─────────────────────────────────────────────────────────────
 # 공통 레이아웃
@@ -154,7 +169,7 @@ def page(path, title, desc, body, active="", extra_head=""):
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ibm/plex-mono@1.1.0/css/ibm-plex-mono-all.min.css">
-<link rel="stylesheet" href="/assets/style.css">
+<link rel="stylesheet" href="/assets/style.css?v={ver('style.css')}">
 <link rel="alternate" type="application/rss+xml" title="{E(CONFIG['NAME_KO'])} 검증 대상" href="/feed.xml">
 <meta property="og:site_name" content="{E(CONFIG['NAME_KO'])} {E(CONFIG['NAME_EN'])}">
 <meta property="og:locale" content="ko_KR">
@@ -166,8 +181,8 @@ def page(path, title, desc, body, active="", extra_head=""):
 {body}
 </main>
 {footer()}
-<script src="/assets/data.js"></script>
-<script src="/assets/app.js"></script>
+<script src="/assets/data.js?v={data_ver()}"></script>
+<script src="/assets/app.js?v={ver('app.js')}"></script>
 </body>
 </html>"""
     out = os.path.join(DIST, path.lstrip("/"))
@@ -1043,12 +1058,12 @@ def build_admin(db):
 <title>관리자 · {E(CONFIG['NAME_KO'])} {E(CONFIG['NAME_EN'])}</title>
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="/assets/admin.css">
+<link rel="stylesheet" href="/assets/admin.css?v={ver('admin.css')}">
 </head>
 <body>
 <div id="app"><p class="boot">불러오는 중…</p></div>
 <script>window.FD_ADMIN={{repo:{json.dumps(site['GITHUB_REPO'])},branch:{json.dumps(site['GITHUB_BRANCH'] or 'main')}}};</script>
-<script src="/assets/admin.js"></script>
+<script src="/assets/admin.js?v={ver('admin.js')}"></script>
 </body>
 </html>"""
     with open(os.path.join(out, "index.html"), "w", encoding="utf-8") as f:
