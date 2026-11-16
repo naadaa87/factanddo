@@ -135,6 +135,50 @@
     renderSaved(); render();
   }
 
+
+  /* ============================================================
+     검증 대상 목록 — 검색·필터 (카드는 서버에서 만들어 둔 HTML)
+     ============================================================ */
+  var fxList = $("#fx-list");
+  if (fxList) {
+    var fx = { q: "", kind: "", cat: "" };
+    var fxCards = $$(".fact-card", fxList);
+    var fxRender = function () {
+      var n = 0, q = fx.q.trim().toLowerCase();
+      fxCards.forEach(function (c) {
+        var ok = (!fx.kind || c.dataset.kind === fx.kind) &&
+                 (!fx.cat || ("|" + c.dataset.cat + "|").indexOf("|" + fx.cat + "|") >= 0) &&
+                 (!q || c.dataset.q.indexOf(q) >= 0);
+        c.hidden = !ok; if (ok) n++;
+      });
+      $("#fx-count").textContent = n;
+      $("#fx-empty").hidden = n > 0;
+    };
+    var fxChips = function (host, key) {
+      $$(".chip", host).forEach(function (b) {
+        b.addEventListener("click", function () {
+          $$(".chip", host).forEach(function (x) { x.classList.remove("on"); });
+          b.classList.add("on"); fx[key] = b.dataset.v; fxRender();
+        });
+      });
+    };
+    fxChips($("#fx-kinds"), "kind"); fxChips($("#fx-cats"), "cat");
+    $("#fx-search").addEventListener("input", function (e) { fx.q = e.target.value; fxRender(); });
+  }
+
+  /* 제보·정정 페이지 — 어떤 대상에서 넘어왔는지 표시 */
+  var rpT = $("#rp-target");
+  if (rpT) {
+    var m = /[?&]target=([a-z0-9-]+)/.exec(location.search);
+    if (m) {
+      $("#rp-target-name").textContent = "‘" + m[1] + "’ 페이지에 대한 요청입니다. 접수할 때 이 주소를 함께 적어 주세요: " +
+        location.origin + "/fact/" + m[1] + "/";
+      rpT.hidden = false;
+      var ml = $("#rp-mail");
+      if (ml) ml.href += encodeURIComponent(" (" + m[1] + ")");
+    }
+  }
+
   /* ============================================================
      팩트리뷰 — 목록(내 브라우저)
      ============================================================ */

@@ -12,8 +12,9 @@ FACT&DO (팩트앤두) 정적 사이트 생성기
 2) data/services.json : 탐색 페이지 데이터
 3) content_ko.py      : 정책 초안·검증 기준 원문
 """
-import json, os, shutil, html
+import json, os, shutil, html, types
 import content_ko as C
+import pages_fact as F
 
 # ─────────────────────────────────────────────────────────────
 # CONFIG — 여기만 고치면 사이트 전반에 반영됩니다
@@ -40,6 +41,17 @@ CONFIG = {
     "YEAR": "2026",
 }
 
+# data/site.json 에 값이 있으면 위 CONFIG 를 덮어씁니다(관리자 화면 > 사이트 설정에서 고치는 값).
+try:
+    with open("data/site.json", encoding="utf-8") as _f:
+        for _k, _v in json.load(_f).items():
+            if not _k.startswith("_") and _v not in ("", None):
+                CONFIG[_k] = _v
+except FileNotFoundError:
+    pass
+for _k in ("REPORT_FORM_URL", "NOTICE", "GITHUB_REPO", "GITHUB_BRANCH"):
+    CONFIG.setdefault(_k, "")
+
 DIST = "dist"
 E = html.escape
 
@@ -55,7 +67,7 @@ MARK_SVG = """<svg class="mark" viewBox="0 0 100 64" aria-hidden="true" focusabl
 WORDMARK = '<span class="wm"><b class="wm-f">FACT</b><b class="wm-a">&amp;</b><b class="wm-d">DO</b></span>'
 
 NAV_ITEMS = [
-    ("/explore/", "탐색"),
+    ("/fact/", "검증 대상"),
     ("/reviews/", "팩트리뷰"),
     ("/groups/", "실행그룹"),
     ("/results/", "결과"),
@@ -76,7 +88,11 @@ def header(active=""):
       <a class="btn btn-coral nav-cta" href="/waitlist/">사전등록</a>
     </nav>
   </div>
-</header>"""
+</header>{notice_bar()}"""
+
+def notice_bar():
+    n = CONFIG.get("NOTICE", "")
+    return f'<div class="notice-bar"><div class="wrap">{E(n)}</div></div>' if n else ""
 
 def footer():
     email = CONFIG["CONTACT_EMAIL"]
@@ -93,21 +109,21 @@ def footer():
     </div>
     <div class="foot-links">
       <b>서비스</b>
-      <a href="/explore/">탐색</a><a href="/reviews/">팩트리뷰</a><a href="/groups/">실행그룹</a><a href="/results/">결과 데이터</a>
+      <a href="/fact/">검증 대상</a><a href="/reviews/">팩트리뷰</a><a href="/explore/">생태계 탐색</a><a href="/groups/">실행그룹</a><a href="/results/">결과 데이터</a>
     </div>
     <div class="foot-links">
       <b>신뢰</b>
-      <a href="/standards/">검증 기준</a><a href="/about/">소개</a><a href="/waitlist/">사전등록</a>
+      <a href="/standards/">검증 기준</a><a href="/records/">공공기록·보도</a><a href="/report/">제보·정정·이의제기</a><a href="/about/">소개</a>
     </div>
     <div class="foot-links">
       <b>정책</b>
-      <a href="/policies/terms/">이용약관(초안)</a><a href="/policies/privacy/">개인정보(초안)</a><a href="/policies/community/">커뮤니티 가이드</a>
+      <a href="/policies/terms/">이용약관</a><a href="/policies/privacy/">개인정보 처리방침</a><a href="/policies/community/">커뮤니티 가이드</a><a href="/waitlist/">사전등록</a>
     </div>
   </div>
   <div class="wrap foot-base">
     <span>© <span id="year">{CONFIG['YEAR']}</span> {E(CONFIG['NAME_KO'])} · {E(CONFIG['NAME_EN'])}</span>
     <span>문의: {contact}{chat}</span>
-    <span class="dim">베타 · 평가점수와 검색 순위는 판매하지 않습니다</span>
+    <span class="dim">평가점수와 검색 순위는 판매하지 않습니다</span>
   </div>
 </footer>"""
 
@@ -139,6 +155,9 @@ def page(path, title, desc, body, active="", extra_head=""):
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ibm/plex-mono@1.1.0/css/ibm-plex-mono-all.min.css">
 <link rel="stylesheet" href="/assets/style.css">
+<link rel="alternate" type="application/rss+xml" title="{E(CONFIG['NAME_KO'])} 검증 대상" href="/feed.xml">
+<meta property="og:site_name" content="{E(CONFIG['NAME_KO'])} {E(CONFIG['NAME_EN'])}">
+<meta property="og:locale" content="ko_KR">
 {extra_head}
 </head>
 <body>
@@ -176,13 +195,13 @@ def sec_head(eyebrow, title, lead="", tone=""):
     lead_html = f'<p class="sec-lead">{lead}</p>' if lead else ""
     return f'<div class="sec-head"><span class="eyebrow {tone}">{E(eyebrow)}</span><h2>{title}</h2>{lead_html}</div>'
 
-def beta_note(text):
-    return f'<p class="beta-note"><span class="beta-tag">베타</span>{text}</p>'
+def beta_note(text, tag="안내"):
+    return f'<p class="beta-note"><span class="beta-tag">{tag}</span>{text}</p>'
 
 # ─────────────────────────────────────────────────────────────
 # 페이지: 홈
 # ─────────────────────────────────────────────────────────────
-def build_home():
+def build_home(fact_sec=""):
     loop = "".join(
         f'<li class="loop-step"><b>{i}</b><span>{t}</span><small>{s}</small></li>'
         for i, (t, s) in enumerate([
@@ -238,7 +257,7 @@ def build_home():
       <p class="hero-lead">과장된 약속을 걸러내고, 비슷한 목표를 가진 사람들과 함께 실행하며,
       시간·비용·과정·성과를 <b>다음 사람을 위한 데이터</b>로 남깁니다.</p>
       <div class="hero-cta">
-        <a class="btn btn-coral" href="/waitlist/">오픈 알림 받기</a>
+        <a class="btn btn-coral" href="/fact/">검증 대상 보기</a>
         <a class="btn btn-ghost" href="/standards/">검증 기준 먼저 보기</a>
       </div>
       <div class="hero-ev">{evidence_meter(3, small=True)}<span>구매 → 수료 → 실행 → 거래 순서로 증빙 범위를 표시합니다</span></div>
@@ -249,9 +268,9 @@ def build_home():
       <figcaption>서비스 화면 시안 · 실제 화면은 구축 단계에 따라 달라질 수 있습니다</figcaption>
     </figure>
   </div>
-  {'<div class="wrap">' + beta_note("지금은 구축 단계입니다. 표본이 없는 화면은 부풀리지 않고 ‘수집 전’으로 표시하며, 비교함·리뷰 초안·그룹 기록은 각자의 브라우저에만 저장됩니다.") + '</div>'}
+  {'<div class="wrap">' + f'<p class="beta-note"><span class="beta-tag">원칙</span>확인한 것만 적고, 모르는 것은 ‘미확인’이라고 씁니다. 표본이 없는 화면은 부풀리지 않으며, 비교함·리뷰 초안·그룹 기록은 각자의 브라우저에 저장됩니다.</p>' + '</div>'}
 </section>
-
+{fact_sec}
 <section class="sec loop-sec">
   <div class="wrap">
     {sec_head("EVIDENCE-TO-ACTION LOOP", "검증이 실행이 되고, 실행이 다시 검증이 됩니다")}
@@ -316,15 +335,20 @@ def build_home():
   <div class="wrap cta-in">
     <div>
       <h2>먼저 확인하고, 함께 실행할 준비가 되셨나요?</h2>
-      <p>오픈 소식, 파운딩 리뷰어 모집, 1기 실행그룹 안내를 순서대로 보내드립니다.</p>
+      <p>파운딩 리뷰어 모집과 1기 실행그룹 안내를 순서대로 보내드립니다.</p>
     </div>
     <a class="btn btn-coral btn-lg" href="/waitlist/">사전등록 하기</a>
   </div>
 </section>
 """
+    ld = json.dumps({"@context": "https://schema.org", "@graph": [
+        {"@type": "Organization", "name": f"{CONFIG['NAME_KO']} {CONFIG['NAME_EN']}", "url": CONFIG["BASE_URL"],
+         "logo": CONFIG["BASE_URL"].rstrip("/") + "/assets/img/mark-512.png", "slogan": CONFIG["SLOGAN"]},
+        {"@type": "WebSite", "name": CONFIG["NAME_KO"], "alternateName": CONFIG["NAME_EN"], "url": CONFIG["BASE_URL"], "inLanguage": "ko"},
+    ]}, ensure_ascii=False)
     return page("/", f"{CONFIG['NAME_KO']} {CONFIG['NAME_EN']} — {CONFIG['SLOGAN']} 부업·수익화 교육 검증과 4주 실행그룹",
-                "부업·수익화 교육을 근거 수준(E0–E5)으로 비교하고, 4주 실행그룹으로 함께 실행해 결과를 데이터로 남기는 독립 플랫폼.",
-                body, active="")
+                "부업·수익화 강의의 수익 주장과 확인된 사실을 나눠 보여주고, 4주 실행그룹으로 함께 실행해 결과를 데이터로 남기는 독립 플랫폼.",
+                body, active="", extra_head=f'<script type="application/ld+json">{ld}</script>')
 
 # ─────────────────────────────────────────────────────────────
 # 페이지: 탐색
@@ -334,11 +358,11 @@ def build_explore(data):
     body = f"""
 <section class="page-head">
   <div class="wrap">
-    <span class="eyebrow t-cobalt">FACT · 탐색</span>
+    <span class="eyebrow t-cobalt">FACT · 생태계 탐색</span>
     <h1>부업·수익화 생태계 탐색</h1>
-    <p>교육 판매 플랫폼부터 실행·거래 채널까지, 의사결정에 걸리는 서비스들을 한 기준으로 모읍니다.
-    개별 과정과 리뷰는 파운딩 리뷰어와 함께 채워 갑니다.</p>
-    {beta_note(f"현재 {n}개 항목 · 기준일 {E(CONFIG['DATA_DATE'])} · 과정·리뷰 표본은 수집 전이며, 없는 것은 없다고 표시합니다.")}
+    <p>교육 판매 플랫폼부터 실행·거래 채널까지, 의사결정에 걸리는 주변 서비스들을 한 기준으로 모읍니다.
+    개별 강의의 주장과 확인된 사실은 <a class="t-cobalt" href="/fact/">검증 대상</a>에서 볼 수 있습니다.</p>
+    <p class="beta-note"><span class="beta-tag">기준</span>현재 {n}개 항목 · 확인일은 항목마다 표시합니다. 리뷰 표본이 없는 것은 없다고 적습니다.</p>
   </div>
 </section>
 <section class="sec">
@@ -358,7 +382,7 @@ def build_explore(data):
     <div id="ex-empty" class="empty" hidden>
       <b>조건에 맞는 항목이 없습니다</b>
       <p>유사 주제로 검색어를 바꾸거나, 알고 계신 과정·서비스를 제보해 주세요.</p>
-      <a class="btn btn-ghost" href="/waitlist/">과정·서비스 제보하기</a>
+      <a class="btn btn-ghost" href="/report/">과정·서비스 제보하기</a>
     </div>
   </div>
 </section>
@@ -407,7 +431,7 @@ def build_reviews():
 </section>
 <section class="sec alt">
   <div class="wrap">
-    {sec_head("MINE", "내가 쓴 리뷰", "베타 기간에는 이 브라우저에만 저장됩니다. JSON으로 내보내 백업할 수 있습니다.")}
+    {sec_head("MINE", "내가 쓴 리뷰", "이 브라우저에만 저장됩니다. JSON으로 내보내 백업할 수 있습니다.")}
     <div id="rv-local-list" class="rv-list"></div>
     <div id="rv-local-empty" class="empty">
       <b>이 브라우저에 저장된 리뷰가 없습니다</b>
@@ -530,7 +554,7 @@ def build_review_new():
 
       <fieldset class="form-sec">
         <legend>6 · 증빙 범위 <span class="dim">(제출 ‘가능’한 범위 선택)</span></legend>
-        <p class="fine">원본 자료를 이 사이트에 올리지 마세요. 베타 기간의 증빙 확인은 제출 후 비공개 절차로 별도 안내되며,
+        <p class="fine">원본 자료를 이 사이트에 올리지 마세요. 증빙 확인은 제출 후 비공개 절차로 따로 안내되며,
         원본은 공개되지 않고 확인 범위만 표시됩니다.</p>
         {ev_boxes}
       </fieldset>
@@ -553,8 +577,8 @@ def build_review_new():
         <button type="button" id="rv-clear" class="btn btn-ghost">초안 지우기</button>
         <button type="submit" id="rv-submit" class="btn btn-cobalt">리뷰 저장(제출 준비)</button>
       </div>
-      <p class="fine">저장 시 이 브라우저의 ‘내가 쓴 리뷰’에 보관됩니다. 검수·게시 절차는 정식 오픈과 함께 시작되며,
-      파운딩 리뷰어에게 제출 방법을 먼저 안내합니다.</p>
+      <p class="fine">저장하면 이 브라우저의 ‘내가 쓴 리뷰’에 보관됩니다. 공개 게시는 증빙 확인을 거친 뒤 진행하며,
+      제출 방법은 파운딩 리뷰어에게 먼저 안내합니다.</p>
     </form>
   </div>
 </section>
@@ -574,6 +598,7 @@ def build_groups():
             ("주제 검증 스프린트", "강의를 사기 전, 관심 분야를 4주 작은 실험으로 확인합니다.", "첫 콘텐츠 · 프로토타입"),
             ("프로젝트 빌드", "역할이 다른 멤버가 모여 하나의 결과물을 공개합니다.", "MVP · 전자책 · 채널"),
             ("수익화 운영반", "이미 시작한 부업의 반복 개선에 집중합니다.", "고객 접촉 · 첫 거래 · 재구매"),
+            ("지역·오프라인 모임", "같은 지역에서 직접 만나 서로의 진행 상황을 점검합니다.", "대면 체크인 · 현장 피드백"),
         ]
     )
     body = f"""
@@ -587,13 +612,13 @@ def build_groups():
       <a class="btn btn-coral" href="/groups/new/">실행그룹 개설하기</a>
       <a class="btn btn-ghost" href="/policies/community/">그룹 규칙 보기</a>
     </div>
-    {beta_note("베타 그룹 보드는 개설자 브라우저에 저장되며, ‘읽기 전용 스냅샷 링크’로 멤버와 공유합니다. 실시간 동기화·계정은 다음 단계에서 제공됩니다.")}
+    <p class="beta-note"><span class="beta-tag">안내</span>그룹 보드는 개설자 브라우저에 저장되며, ‘읽기 전용 스냅샷 링크’로 멤버와 공유합니다. 실시간 동기화와 계정 기능은 다음 단계에서 제공됩니다.</p>
   </div>
 </section>
 <section class="sec">
   <div class="wrap">
     {sec_head("TYPES", "그룹의 다섯 가지 쓰임", "", "t-coral")}
-    <div class="grid4">{types}</div>
+    <div class="grid5">{types}</div>
   </div>
 </section>
 <section class="sec alt">
@@ -931,14 +956,14 @@ def build_waitlist():
 <section class="page-head coral">
   <div class="wrap">
     <span class="eyebrow t-coral">JOIN · 사전등록</span>
-    <h1>오픈 알림과 첫 기회를 먼저 받으세요</h1>
+    <h1>새 소식과 첫 기회를 먼저 받으세요</h1>
     <p>스팸 없이, 준비된 것만 순서대로 보냅니다.</p>
   </div>
 </section>
 <section class="sec">
   <div class="wrap">
     <div class="grid3">
-      <div class="card"><b class="mono t-coral">01</b><b>오픈 알림</b><p>정식 오픈과 주요 기능 공개 소식을 가장 먼저 받습니다.</p></div>
+      <div class="card"><b class="mono t-coral">01</b><b>새 소식</b><p>새로 등록된 검증 대상과 주요 기능 공개 소식을 먼저 받습니다.</p></div>
       <div class="card"><b class="mono t-coral">02</b><b>파운딩 리뷰어</b><p>실제 수강 경험을 첫 기준 리뷰로 남기는 초기 멤버로 초대합니다.</p></div>
       <div class="card"><b class="mono t-coral">03</b><b>1기 실행그룹</b><p>AI 자동화·콘텐츠·이커머스 주제의 첫 4주 스프린트에 우선 안내합니다.</p></div>
     </div>
@@ -949,15 +974,15 @@ def build_waitlist():
   <div class="wrap narrow">
     {sec_head("PROMISE", "사전등록자에게 드리는 약속")}
     <ul class="rule-list">
-      <li>이메일은 오픈 안내와 위 세 가지 목적 외에 사용하지 않습니다.</li>
+      <li>이메일은 위 세 가지 안내 외의 목적으로 사용하지 않습니다.</li>
       <li>광고·제휴 메일을 보내지 않으며, 한 번의 클릭으로 수신을 중단할 수 있습니다.</li>
       <li>모집·통계 수치를 부풀려 표시하지 않습니다.</li>
     </ul>
   </div>
 </section>
 """
-    return page("/waitlist/", "사전등록 — 오픈 알림 받기",
-                "팩트앤두 오픈 알림, 파운딩 리뷰어, 1기 실행그룹 안내를 순서대로 받아보세요.",
+    return page("/waitlist/", "사전등록 — 파운딩 리뷰어·1기 실행그룹",
+                "팩트앤두 새 소식, 파운딩 리뷰어, 1기 실행그룹 안내를 순서대로 받아보세요.",
                 body, active="")
 
 # ─────────────────────────────────────────────────────────────
@@ -970,12 +995,12 @@ def build_policy(path, title, items, desc):
   <div class="wrap">
     <span class="eyebrow">POLICY</span>
     <h1>{E(title)}</h1>
-    {beta_note(E(C.POLICY_NOTICE))}
+    {beta_note(E(C.POLICY_NOTICE), "초안")}
   </div>
 </section>
 <section class="sec">
   <div class="wrap narrow pol-body">{secs}
-    <p class="fine">시행일: 정식 오픈일에 확정 · 문의는 하단 이메일로 접수합니다.</p>
+    <p class="fine">문의와 정정 요청은 <a class="t-cobalt" href="/report/">제보·정정·이의제기</a> 안내에 따라 접수합니다.</p>
   </div>
 </section>
 """
@@ -998,6 +1023,36 @@ def build_404():
     # 404는 dist 루트의 404.html 로 저장 (Cloudflare Pages 규칙)
     doc_path = page("/404.html", "페이지를 찾을 수 없습니다", "요청한 페이지를 찾을 수 없습니다.", body)
     return doc_path
+
+def build_admin(db):
+    """관리자 화면(/admin/). 저장은 GitHub 저장소에 직접 커밋하는 방식이라 서버가 필요 없습니다."""
+    out = os.path.join(DIST, "admin")
+    os.makedirs(out, exist_ok=True)
+    site = {k: CONFIG.get(k, "") for k in ("CONTACT_EMAIL", "WAITLIST_FORM_URL", "REPORT_FORM_URL", "OPENCHAT_URL",
+                                             "NOTICE", "DATA_DATE", "GITHUB_REPO", "GITHUB_BRANCH")}
+    with open(os.path.join(out, "db.json"), "w", encoding="utf-8") as f:
+        json.dump({**db, "site": site}, f, ensure_ascii=False)
+    for name in ("admin.css", "admin.js"):
+        shutil.copy(os.path.join("assets", name), os.path.join(DIST, "assets", name))
+    doc = f"""<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>관리자 · {E(CONFIG['NAME_KO'])} {E(CONFIG['NAME_EN'])}</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="/assets/admin.css">
+</head>
+<body>
+<div id="app"><p class="boot">불러오는 중…</p></div>
+<script>window.FD_ADMIN={{repo:{json.dumps(site['GITHUB_REPO'])},branch:{json.dumps(site['GITHUB_BRANCH'] or 'main')}}};</script>
+<script src="/assets/admin.js"></script>
+</body>
+</html>"""
+    with open(os.path.join(out, "index.html"), "w", encoding="utf-8") as f:
+        f.write(doc)
 
 # ─────────────────────────────────────────────────────────────
 # 빌드 실행
@@ -1023,27 +1078,45 @@ def main():
     for icon in ("favicon-32.png", "favicon-64.png", "apple-touch-icon.png"):
         shutil.copy(os.path.join("assets", icon), os.path.join(DIST, icon))
 
+    # 검증 대상·후기·공공기록 로드
+    def load(name):
+        with open(f"data/{name}.json", encoding="utf-8") as f:
+            return json.load(f).get("items", [])
+    targets, reviews, records, cases = load("targets"), load("reviews"), load("records"), load("cases")
+    ctx = types.SimpleNamespace(page=page, CONFIG=CONFIG, sec_head=sec_head, beta_note=beta_note)
+    pub_targets = F.public(targets)
+
     # 페이지 생성
     paths = [
-        build_home(),
+        build_home(F.home_fact_section(ctx, targets, reviews, records)),
+        F.build_fact_index(ctx, targets, reviews),
         build_explore(data),
-        build_reviews(),
+        F.build_reviews_page(ctx, targets, reviews),
         build_review_new(),
         build_groups(),
         build_group_new(),
         build_group_room(),
         build_results(),
         build_standards(),
+        F.build_records_page(ctx, records),
+        F.build_report_page(ctx, C.DISPUTE_STEPS),
         build_about(),
         build_waitlist(),
         build_policy("/policies/terms/", "이용약관 (초안)", C.TERMS,
                      "팩트앤두 이용약관 초안 — 서비스 성격, 금지 행위, 관계 공개 의무, 책임의 한계."),
         build_policy("/policies/privacy/", "개인정보 처리방침 (초안)", C.PRIVACY,
-                     "팩트앤두 개인정보 처리방침 초안 — 베타 기준 수집 항목과 증빙 자료 처리 원칙."),
+                     "팩트앤두 개인정보 처리방침 초안 — 수집 항목과 증빙 자료 처리 원칙."),
         build_policy("/policies/community/", "커뮤니티 가이드", C.COMMUNITY,
                      "팩트앤두 커뮤니티 가이드 — 표현 원칙, 금지 행위, 실행그룹 규칙, 신고 절차."),
     ]
+    lastmod = {"/": CONFIG["DATA_DATE"], "/fact/": CONFIG["DATA_DATE"], "/reviews/": CONFIG["DATA_DATE"]}
+    for t in pub_targets:
+        pth = F.build_fact_detail(ctx, t, targets, reviews)
+        paths.append(pth)
+        lastmod[pth] = t.get("checked", "")
     build_404()
+    build_admin({"targets": targets, "reviews": reviews, "records": records, "cases": cases,
+                 "services": data["items"]})
 
     # 네이버 소유확인 파일
     nv = CONFIG.get("NAVER_VERIFY_FILE", "")
@@ -1051,14 +1124,34 @@ def main():
         with open(os.path.join(DIST, nv), "w", encoding="utf-8") as f:
             f.write("naver-site-verification: " + nv)
 
-    # robots.txt / sitemap.xml
+    # robots.txt / sitemap.xml / feed.xml
     base = CONFIG["BASE_URL"].rstrip("/")
     with open(os.path.join(DIST, "robots.txt"), "w", encoding="utf-8") as f:
-        f.write(f"User-agent: *\nAllow: /\nSitemap: {base}/sitemap.xml\n")
-    urls = "".join(f"<url><loc>{base}{p}</loc></url>" for p in paths if not p.endswith(".html"))
+        f.write(f"User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /groups/room/\n\n"
+                f"User-agent: Yeti\nAllow: /\nDisallow: /admin/\n\nSitemap: {base}/sitemap.xml\n")
+    def url_xml(p):
+        lm = f"<lastmod>{lastmod[p]}</lastmod>" if lastmod.get(p) else ""
+        return f"<url><loc>{base}{p}</loc>{lm}</url>"
+    urls = "".join(url_xml(p) for p in paths if not p.endswith(".html") and p != "/groups/room/")
     with open(os.path.join(DIST, "sitemap.xml"), "w", encoding="utf-8") as f:
         f.write('<?xml version="1.0" encoding="UTF-8"?>\n'
                 '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + urls + "</urlset>")
+    from email.utils import format_datetime
+    from datetime import datetime, timezone, timedelta
+    def rfc(d):
+        try:
+            return format_datetime(datetime.strptime(d, "%Y-%m-%d").replace(tzinfo=timezone(timedelta(hours=9))))
+        except Exception:
+            return ""
+    rss_items = "".join(
+        f"<item><title>{E(t['name'])}</title><link>{base}/fact/{E(t['id'])}/</link>"
+        f"<guid>{base}/fact/{E(t['id'])}/</guid><description>{E(t.get('summary',''))}</description>"
+        f"<pubDate>{rfc(t.get('checked',''))}</pubDate></item>" for t in pub_targets)
+    with open(os.path.join(DIST, "feed.xml"), "w", encoding="utf-8") as f:
+        f.write('<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel>'
+                f"<title>{E(CONFIG['NAME_KO'])} {E(CONFIG['NAME_EN'])} — 검증 대상</title><link>{base}/fact/</link>"
+                f"<description>부업·수익화 강의의 주장과 확인된 사실</description><language>ko</language>"
+                + rss_items + "</channel></rss>")
 
     total = sum(len(files) for _, _, files in os.walk(DIST))
     print(f"빌드 완료 — 페이지 {len(paths)+1}개, 파일 {total}개 → {DIST}/")

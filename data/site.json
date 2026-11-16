@@ -1,0 +1,11 @@
+{
+  "_설명": "사이트 공통 설정입니다. 관리자 화면 > 사이트 설정에서 고칩니다. 비워 둔 항목은 화면에 '준비 중'으로 표시됩니다.",
+  "CONTACT_EMAIL": "",
+  "WAITLIST_FORM_URL": "",
+  "REPORT_FORM_URL": "",
+  "OPENCHAT_URL": "",
+  "NOTICE": "",
+  "DATA_DATE": "2026-11-17",
+  "GITHUB_REPO": "naadaa87/factanddo",
+  "GITHUB_BRANCH": "main"
+}
