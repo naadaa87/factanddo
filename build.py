@@ -33,6 +33,10 @@ CONFIG = {
     "CONTACT_EMAIL": "",
     # 데이터 기준일(탐색 페이지 하단 표기)
     "DATA_DATE": "2026-07-19",
+    # 네이버 서치어드바이저 사이트 소유확인 코드 (메타 태그 방식)
+    "NAVER_VERIFY": "a75cc76e443211b16ab71151f4f2e661ad7e75f2",
+    # 네이버 소유확인 HTML 파일명 (파일 업로드 방식 — 둘 중 하나만 인식되면 됩니다)
+    "NAVER_VERIFY_FILE": "naverec3ee427f0af386a5824d93c3ad69a61.html",
     "YEAR": "2026",
 }
 
@@ -107,6 +111,10 @@ def footer():
   </div>
 </footer>"""
 
+def naver_meta():
+    code = CONFIG.get("NAVER_VERIFY", "")
+    return f'<meta name="naver-site-verification" content="{E(code)}" />' if code else ""
+
 def page(path, title, desc, body, active="", extra_head=""):
     url = CONFIG["BASE_URL"].rstrip("/") + path
     full_title = f"{title} · {CONFIG['NAME_KO']} {CONFIG['NAME_EN']}" if path != "/" else title
@@ -117,6 +125,7 @@ def page(path, title, desc, body, active="", extra_head=""):
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{E(full_title)}</title>
 <meta name="description" content="{E(desc)}">
+{naver_meta()}
 <link rel="canonical" href="{E(url)}">
 <meta property="og:type" content="website">
 <meta property="og:title" content="{E(full_title)}">
@@ -1035,6 +1044,12 @@ def main():
                      "팩트앤두 커뮤니티 가이드 — 표현 원칙, 금지 행위, 실행그룹 규칙, 신고 절차."),
     ]
     build_404()
+
+    # 네이버 소유확인 파일
+    nv = CONFIG.get("NAVER_VERIFY_FILE", "")
+    if nv:
+        with open(os.path.join(DIST, nv), "w", encoding="utf-8") as f:
+            f.write("naver-site-verification: " + nv)
 
     # robots.txt / sitemap.xml
     base = CONFIG["BASE_URL"].rstrip("/")
