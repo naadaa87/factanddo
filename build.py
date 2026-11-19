@@ -1143,7 +1143,7 @@ def main():
     # robots.txt / sitemap.xml / feed.xml
     base = CONFIG["BASE_URL"].rstrip("/")
     with open(os.path.join(DIST, "robots.txt"), "w", encoding="utf-8") as f:
-        f.write(f"User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /groups/room/\n\n"
+        f.write(f"User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /groups/room/\nDisallow: /cdn-cgi/\n\n"
                 f"User-agent: Yeti\nAllow: /\nDisallow: /admin/\n\nSitemap: {base}/sitemap.xml\n")
     def url_xml(p):
         lm = f"<lastmod>{lastmod[p]}</lastmod>" if lastmod.get(p) else ""
